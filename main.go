@@ -17,5 +17,5 @@ func setupFlag() {
 func main() {
 	setupFlag()
 	log.Printf("Rollingg the dice")
-	server.RunSyncTCPServer()
+	server.RunAsyncTCPServer()
 }

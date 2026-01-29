@@ -92,9 +92,11 @@ func DecodeOne(data []byte) (interface{}, int, error) {
 		return readError(data)
 
 	case ':':
-		return readBulkString(data)
+		return readInt64(data)
 
 	case '$':
+		return readBulkString(data)
+	case '*':
 		return readArray(data)
 	}
 
@@ -110,6 +112,7 @@ func DecodeArrayString(data []byte) ([]string, error) {
 	}
 
 	ts := value.([]interface{})
+
 	tokens := make([]string, len(ts))
 
 	for i := range tokens {
@@ -136,7 +139,7 @@ func Encode(value interface{}, isSimple bool) []byte {
 			return []byte(fmt.Sprintf("+%s\r\n", v))
 		}
 
-		return []byte(fmt.Sprintf("%d\r\n%s\r\n", len(v), v))
+		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(v), v))
 
 	}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/PratikkJadhav/Redigo/core"
 )
 
-func readCommands(c net.Conn) (*core.RedisCmd, error) {
+func readCommands(c io.ReadWriter) (*core.RedisCmd, error) {
 
 	var buf []byte = make([]byte, 512)
 
@@ -33,11 +33,11 @@ func readCommands(c net.Conn) (*core.RedisCmd, error) {
 	}, nil
 }
 
-func repondError(err error, c net.Conn) {
+func repondError(err error, c io.ReadWriter) {
 	c.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
 }
 
-func respond(cmd *core.RedisCmd, c net.Conn) {
+func respond(cmd *core.RedisCmd, c io.ReadWriter) {
 	err := core.EvalAndRespond(cmd, c)
 	if err != nil {
 		repondError(err, c)
@@ -45,24 +45,26 @@ func respond(cmd *core.RedisCmd, c net.Conn) {
 }
 
 func RunSyncTCPServer() {
-	log.Printf("Starting a sync tcp server on %s:%d", config.Host, config.Port)
+	log.Println("Starting a sync tcp server on", config.Host, config.Port)
 
 	var con_clients = 0
 
 	lsnr, err := net.Listen("tcp", config.Host+":"+strconv.Itoa(config.Port))
 	if err != nil {
-		panic(err)
+		// panic(err)
+		log.Println(err)
+		return
 	}
 
 	for {
 
 		c, err := lsnr.Accept()
 		if err != nil {
-			panic(err)
+			// panic(err)
+			log.Println(err)
 		}
 
 		con_clients += 1
-		log.Printf("client connected with address: %s, concurrent client: %d", c.RemoteAddr(), con_clients)
 
 		for {
 
@@ -70,12 +72,10 @@ func RunSyncTCPServer() {
 			if err != nil {
 				c.Close()
 				con_clients -= 1
-				log.Printf("Client disconnected with address %s, concurrent client: %d", c.RemoteAddr(), con_clients)
 
 				if err == io.EOF {
 					break
 				}
-				log.Printf("err: %s", err)
 			}
 
 			respond(cmd, c)
