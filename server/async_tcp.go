@@ -4,12 +4,15 @@ import (
 	"log"
 	"net"
 	"syscall"
+	"time"
 
 	"github.com/PratikkJadhav/Redigo/config"
 	"github.com/PratikkJadhav/Redigo/core"
 )
 
 var con_clients = 0
+var cronFrequency time.Duration = 1 * time.Second
+var lastCronExecTime time.Time = time.Now()
 
 func RunAsyncTCPServer() error {
 	log.Println("Starting a Sync TCP server", &config.Host, &config.Port)
@@ -73,6 +76,11 @@ func RunAsyncTCPServer() error {
 	}
 
 	for {
+
+		if time.Now().After(lastCronExecTime.Add(cronFrequency)) {
+			core.DeleteExpiredKeys()
+			lastCronExecTime = time.Now()
+		}
 		nevents, err := syscall.EpollWait(EpollFD, events[:], -1)
 		if err != nil {
 			return err
