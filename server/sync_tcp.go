@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -12,7 +11,15 @@ import (
 	"github.com/PratikkJadhav/Redigo/core"
 )
 
-func readCommands(c io.ReadWriter) (*core.RedisCmd, error) {
+func toArrayString(ai []interface{}) ([]string, error) {
+	as := make([]string, len(ai))
+	for i := range ai {
+		as[i] = ai[i].(string)
+	}
+
+	return as, nil
+}
+func readCommands(c io.ReadWriter) ([]*core.RedisCmd, error) {
 
 	var buf []byte = make([]byte, 512)
 
@@ -22,26 +29,30 @@ func readCommands(c io.ReadWriter) (*core.RedisCmd, error) {
 		return nil, err
 	}
 
-	tokens, err := core.DecodeArrayString(buf[:n])
+	values, err := core.Decode(buf[:n])
 	if err != nil {
 		return nil, err
 	}
 
-	return &core.RedisCmd{
-		Cmd:  strings.ToUpper(tokens[0]),
-		Args: tokens[1:],
-	}, nil
-}
+	var cmds []*core.RedisCmd = make([]*core.RedisCmd, 0)
+	for _, value := range values {
+		tokens, err := toArrayString(value.([]interface{}))
 
-func repondError(err error, c io.ReadWriter) {
-	c.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
-}
+		if err != nil {
+			return nil, err
+		}
 
-func respond(cmd *core.RedisCmd, c io.ReadWriter) {
-	err := core.EvalAndRespond(cmd, c)
-	if err != nil {
-		repondError(err, c)
+		cmds = append(cmds, &core.RedisCmd{
+			Cmd:  strings.ToUpper(tokens[0]),
+			Args: tokens[1:],
+		})
 	}
+
+	return cmds, nil
+}
+
+func respond(cmds core.RedisCmds, c io.ReadWriter) {
+	core.EvalAndRespond(cmds, c)
 }
 
 func RunSyncTCPServer() {
@@ -68,7 +79,7 @@ func RunSyncTCPServer() {
 
 		for {
 
-			cmd, err := readCommands(c)
+			cmds, err := readCommands(c)
 			if err != nil {
 				c.Close()
 				con_clients -= 1
@@ -78,7 +89,7 @@ func RunSyncTCPServer() {
 				}
 			}
 
-			respond(cmd, c)
+			respond(cmds, c)
 		}
 
 	}
