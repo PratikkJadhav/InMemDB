@@ -5,3 +5,5 @@ var Port int = 7379
 
 var KeysLimit int = 5
 var EvictionStratergy string = "simple-first"
+
+var AOFFile string = "./INMEMDB.aof"

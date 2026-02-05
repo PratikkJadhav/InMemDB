@@ -149,6 +149,10 @@ func evalExpire(args []string) []byte {
 	return RESP_ONE
 }
 
+func evalBGREWRITEAOF(args []string) []byte {
+	DumpAllAOF()
+	return RESP_OK
+}
 func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 	var response []byte
 	buf := bytes.NewBuffer(response)
@@ -157,27 +161,19 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 		switch cmd.Cmd {
 		case "PING":
 			buf.Write(evalPing(cmd.Args))
-
-		case "GET":
-			buf.Write(evalGET(cmd.Args))
-
 		case "SET":
 			buf.Write(evalSET(cmd.Args))
-
+		case "GET":
+			buf.Write(evalGET(cmd.Args))
 		case "TTL":
 			buf.Write(evalTTL(cmd.Args))
-
 		case "DEL":
 			buf.Write(evalDEL(cmd.Args))
-
 		case "EXPIRE":
 			buf.Write(evalExpire(cmd.Args))
-
 		default:
 			buf.Write(evalPing(cmd.Args))
 		}
 	}
-
 	c.Write(buf.Bytes())
-
 }
