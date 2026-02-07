@@ -1,0 +1,17 @@
+package core
+
+import "strconv"
+
+func deduceTypeEncoding(s string) (uint8, uint8) {
+	oType := OBJ_TYPE_STRING
+
+	if _, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return oType, OBJ_ENCODING_INT
+	}
+
+	if len(s) <= 44 {
+		return oType, OBJ_ENCODING_EMBSTR
+	}
+
+	return oType, OBJ_ENCODING_RAW
+}

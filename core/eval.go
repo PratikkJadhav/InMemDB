@@ -37,6 +37,7 @@ func evalSET(args []string) []byte {
 
 	var key, value string
 	key, value = args[0], args[1]
+	oType, oEnc := deduceTypeEncoding(value)
 
 	var ExecMSec int64 = -1
 
@@ -50,7 +51,7 @@ func evalSET(args []string) []byte {
 
 			ExecSec, err := strconv.ParseInt(args[3], 10, 64)
 			if err != nil {
-				return Encode(errors.New("(error) ERR value is not an integer or out of range"), false)
+				return Encode(errors.New("ERR value is not an integer or out of range"), false)
 			}
 
 			ExecMSec = ExecSec * 1000
@@ -60,7 +61,7 @@ func evalSET(args []string) []byte {
 		}
 	}
 
-	Put(key, NewObj(value, ExecMSec))
+	Put(key, NewObj(value, ExecMSec, oType, oEnc))
 	return RESP_OK
 
 }
@@ -135,7 +136,7 @@ func evalExpire(args []string) []byte {
 
 	executionDur, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
-		return Encode(errors.New("(error) ERR value is not an integer or out of range"), false)
+		return Encode(errors.New("ERR value is not an integer or out of range"), false)
 	}
 
 	obj := Get(key)
@@ -152,6 +153,35 @@ func evalExpire(args []string) []byte {
 func evalBGREWRITEAOF(args []string) []byte {
 	DumpAllAOF()
 	return RESP_OK
+}
+
+func evalINCR(args []string) []byte {
+	if len(args) != 1 {
+		return Encode(errors.New("Err wrong number of arguments for 'incr' command"), false)
+	}
+
+	var key string = args[0]
+
+	obj := Get(key)
+
+	if obj == nil {
+		obj = NewObj("0", -1, OBJ_TYPE_STRING, OBJ_ENCODING_INT)
+		Put(key, obj)
+	}
+
+	if err := assertType(obj.TypeEncoding, OBJ_TYPE_STRING); err != nil {
+		return Encode(err, false)
+	}
+
+	if err := assertEncoding(obj.TypeEncoding, OBJ_ENCODING_INT); err != nil {
+		return Encode(err, false)
+	}
+
+	i, _ := strconv.ParseInt(obj.Value.(string), 10, 64)
+	i++
+	obj.Value = strconv.FormatInt(i, 10)
+
+	return Encode(i, false)
 }
 func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 	var response []byte
@@ -171,6 +201,12 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 			buf.Write(evalDEL(cmd.Args))
 		case "EXPIRE":
 			buf.Write(evalExpire(cmd.Args))
+
+		case "BGREWRITEAOF":
+			buf.Write(evalBGREWRITEAOF(cmd.Args))
+
+		case "INCR":
+			buf.Write(evalINCR(cmd.Args))
 		default:
 			buf.Write(evalPing(cmd.Args))
 		}

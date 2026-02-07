@@ -6,18 +6,13 @@ import (
 	"github.com/PratikkJadhav/Redigo/config"
 )
 
-type Obj struct {
-	Value     interface{}
-	ExpiresAt int64
-}
-
 var store map[string]*Obj
 
 func init() {
 	store = make(map[string]*Obj)
 }
 
-func NewObj(value interface{}, durationMS int64) *Obj {
+func NewObj(value interface{}, durationMS int64, otype uint8, oEnc uint8) *Obj {
 	var expiresAt int64 = -1
 
 	if durationMS > 0 {
@@ -25,8 +20,9 @@ func NewObj(value interface{}, durationMS int64) *Obj {
 	}
 
 	return &Obj{
-		Value:     value,
-		ExpiresAt: expiresAt,
+		Value:        value,
+		TypeEncoding: otype | oEnc,
+		ExpiresAt:    expiresAt,
 	}
 
 }
