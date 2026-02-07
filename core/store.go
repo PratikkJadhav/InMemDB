@@ -3,7 +3,7 @@ package core
 import (
 	"time"
 
-	"github.com/PratikkJadhav/Redigo/config"
+	"github.com/PratikkJadhav/InMemDB/config"
 )
 
 var store map[string]*Obj
@@ -33,6 +33,12 @@ func Put(k string, obj *Obj) {
 		evict()
 	}
 	store[k] = obj
+
+	if keyKeyspaceStat[0] == nil {
+		keyKeyspaceStat[0] = make(map[string]int)
+	}
+
+	keyKeyspaceStat[0]["keys"]++
 }
 
 func Get(k string) *Obj {
@@ -40,7 +46,7 @@ func Get(k string) *Obj {
 
 	if v != nil {
 		if v.ExpiresAt != -1 && v.ExpiresAt <= time.Now().UnixMilli() {
-			delete(store, k)
+			Del(k)
 			return nil
 		}
 	}
@@ -54,5 +60,6 @@ func Del(k string) bool {
 		return true
 	}
 
+	keyKeyspaceStat[0]["keys"]--
 	return false
 }

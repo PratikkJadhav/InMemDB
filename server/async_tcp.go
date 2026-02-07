@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PratikkJadhav/Redigo/config"
-	"github.com/PratikkJadhav/Redigo/core"
+	"github.com/PratikkJadhav/InMemDB/config"
+	"github.com/PratikkJadhav/InMemDB/core"
 )
 
 var con_clients = 0

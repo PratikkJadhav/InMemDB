@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PratikkJadhav/Redigo/config"
+	"github.com/PratikkJadhav/InMemDB/config"
 )
 
 func dumpKey(fp *os.File, key string, obj *Obj) {

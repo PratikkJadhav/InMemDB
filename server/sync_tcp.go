@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PratikkJadhav/Redigo/config"
-	"github.com/PratikkJadhav/Redigo/core"
+	"github.com/PratikkJadhav/InMemDB/config"
+	"github.com/PratikkJadhav/InMemDB/core"
 )
 
 func toArrayString(ai []interface{}) ([]string, error) {
