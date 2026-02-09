@@ -80,7 +80,7 @@ func evalGET(args []string) []byte {
 		return RESP_Nil
 	}
 
-	if obj.ExpiresAt != -1 && obj.ExpiresAt <= time.Now().UnixMilli() {
+	if hasExpired(obj) {
 		return RESP_Nil
 	}
 
@@ -101,17 +101,16 @@ func evalTTL(args []string) []byte {
 		return RESP_MINUS_TWO
 	}
 
-	if obj.ExpiresAt == -1 {
+	exp, isExpiredSet := getExpiry(obj)
+	if !isExpiredSet {
 		return RESP_MINUS_ONE
 	}
 
-	durationMS := obj.ExpiresAt - time.Now().UnixMilli()
-
-	if durationMS < 0 {
+	if exp < uint64(time.Now().UnixMilli()) {
 		return RESP_MINUS_TWO
 	}
-
-	return Encode(int64(durationMS/1000), false)
+	durationMs := exp - uint64(time.Now().UnixMilli())
+	return Encode(int64(durationMs/1000), false)
 
 }
 
@@ -146,7 +145,7 @@ func evalExpire(args []string) []byte {
 		return RESP_ZERO
 	}
 
-	obj.ExpiresAt = time.Now().UnixMilli() + executionDur*1000
+	SetExpiry(obj, uint64(executionDur*1000))
 
 	return RESP_ONE
 }
@@ -204,6 +203,11 @@ func evalCLIENT(args []string) []byte {
 func evalLATENCY(args []string) []byte {
 	return Encode([]string{}, false)
 }
+
+func evalLRU(args []string) []byte {
+	evictAllkeysLRU()
+	return RESP_OK
+}
 func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 	var response []byte
 	buf := bytes.NewBuffer(response)
@@ -237,6 +241,9 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 
 		case "LATENCY":
 			buf.Write(evalLATENCY(cmd.Args))
+
+		case "LRU":
+			buf.Write(evalLRU(cmd.Args))
 		default:
 			buf.Write(evalPing(cmd.Args))
 		}

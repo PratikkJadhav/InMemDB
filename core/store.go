@@ -7,23 +7,31 @@ import (
 )
 
 var store map[string]*Obj
+var expires map[*Obj]uint64
 
 func init() {
 	store = make(map[string]*Obj)
+	expires = make(map[*Obj]uint64)
+
 }
 
-func NewObj(value interface{}, durationMS int64, otype uint8, oEnc uint8) *Obj {
-	var expiresAt int64 = -1
+func SetExpiry(obj *Obj, expDurationMS uint64) {
+	expires[obj] = uint64(time.Now().UnixMilli()) + uint64(expDurationMS)
+}
 
-	if durationMS > 0 {
-		expiresAt = durationMS + time.Now().UnixMilli()
+func NewObj(value interface{}, expdurationMS int64, otype uint8, oEnc uint8) *Obj {
+
+	obj := &Obj{
+		Value:          value,
+		TypeEncoding:   otype | oEnc,
+		lastAccessedAt: getCurrentClock(),
 	}
 
-	return &Obj{
-		Value:        value,
-		TypeEncoding: otype | oEnc,
-		ExpiresAt:    expiresAt,
+	if expdurationMS > 0 {
+		SetExpiry(obj, uint64(expdurationMS))
 	}
+
+	return obj
 
 }
 
@@ -32,6 +40,7 @@ func Put(k string, obj *Obj) {
 	if len(store) >= config.KeysLimit {
 		evict()
 	}
+	obj.lastAccessedAt = getCurrentClock()
 	store[k] = obj
 
 	if keyKeyspaceStat[0] == nil {
@@ -45,18 +54,20 @@ func Get(k string) *Obj {
 	v := store[k]
 
 	if v != nil {
-		if v.ExpiresAt != -1 && v.ExpiresAt <= time.Now().UnixMilli() {
+		if hasExpired(v) {
 			Del(k)
 			return nil
 		}
 	}
 
+	v.lastAccessedAt = getCurrentClock()
+
 	return v
 }
 
 func Del(k string) bool {
-	if _, ok := store[k]; ok {
-		delete(store, k)
+	if obj, ok := store[k]; ok {
+		delete(expires, obj)
 		return true
 	}
 
