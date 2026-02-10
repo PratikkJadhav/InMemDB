@@ -319,6 +319,38 @@ func evalHGETALL(args []string) []byte {
 
 }
 
+func evalHDEL(args []string) []byte {
+	if len(args) < 2 {
+		return Encode(errors.New("ERR wrong number of arguments for 'HDEL' command"), false)
+	}
+
+	key := args[0]
+	field := args[1]
+
+	obj := Get(key)
+
+	if obj == nil {
+		return RESP_ZERO
+	}
+
+	if obj.Type != OBJ_TYPE_HASH {
+		return Encode(errors.New("WRONGTYPE Operation against a key holding the wrong kind of value"), false)
+	}
+
+	hash := obj.Value.(map[string]string)
+
+	if _, ok := hash[field]; ok {
+		delete(hash, field)
+
+		if len(hash) == 0 {
+			Del(key)
+		}
+
+		return RESP_ONE
+	}
+
+	return RESP_ZERO
+}
 func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 	var response []byte
 	buf := bytes.NewBuffer(response)
@@ -367,6 +399,9 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 
 		case "HGETALL":
 			buf.Write(evalHGETALL(cmd.Args))
+
+		case "HDEL":
+			buf.Write(evalHDEL(cmd.Args))
 		default:
 			buf.Write(evalPing(cmd.Args))
 		}
