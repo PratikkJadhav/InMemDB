@@ -80,8 +80,13 @@ func evalGET(args []string) []byte {
 		return RESP_Nil
 	}
 
-	if hasExpired(obj) {
-		return RESP_Nil
+	if obj.Type != OBJ_TYPE_STRING {
+		return Encode(errors.New("WRONGTYPE Operation against a key holding the wrong kind of value"), false)
+	}
+	if obj.Value != nil {
+		if hasExpired(obj) {
+			return RESP_Nil
+		}
 	}
 
 	return Encode(obj.Value, false)
@@ -223,6 +228,97 @@ func evalSLEEP(args []string) []byte {
 	time.Sleep(time.Duration(durationSec) * time.Second)
 	return RESP_OK
 }
+
+func evalHSET(args []string) []byte {
+	if len(args) < 3 {
+		return Encode(errors.New("ERR wrong number of arguments for 'HSET' command"), false)
+	}
+
+	key := args[0]
+	field := args[1]
+	value := args[2]
+
+	obj := Get(key)
+
+	if obj == nil {
+		hasMap := make(map[string]string)
+
+		obj = &Obj{
+			Type:           OBJ_TYPE_HASH,
+			TypeEncoding:   OBJ_ENCODING_HT,
+			Value:          hasMap,
+			lastAccessedAt: 0,
+		}
+
+		Put(key, obj)
+	}
+
+	if obj.Type != OBJ_TYPE_HASH {
+		return Encode(errors.New("WRONGTYPE Operation against a key holding the wrong kind of value"), false)
+
+	}
+
+	hash := obj.Value.(map[string]string)
+	hash[field] = value
+
+	return RESP_OK
+}
+
+func evalHGET(args []string) []byte {
+	if len(args) < 2 {
+		return Encode(errors.New("ERR wrong number of arguments for 'HGET' command"), false)
+	}
+
+	key := args[0]
+	field := args[1]
+
+	obj := Get(key)
+
+	if obj == nil {
+		return RESP_Nil
+	}
+
+	if obj.Type != OBJ_TYPE_HASH {
+		return Encode(errors.New("WRONGTYPE Operation against a key holding the wrong kind of value"), false)
+	}
+
+	hash := obj.Value.(map[string]string)
+	val, ok := hash[field]
+	if !ok {
+		return RESP_Nil
+	}
+	return Encode(val, false)
+}
+
+func evalHGETALL(args []string) []byte {
+	if len(args) != 1 {
+		return Encode(errors.New("ERR wrong number of arguments for 'HGETALL' command"), false)
+	}
+
+	key := args[0]
+	obj := Get(key)
+
+	if obj == nil {
+		return Encode([]string{}, false)
+	}
+
+	if obj.Type != OBJ_TYPE_HASH {
+		return Encode(errors.New("WRONGTYPE Operation against a key holding the wrong kind of value"), false)
+	}
+
+	hash := obj.Value.(map[string]string)
+
+	items := make([]string, 0, len(hash)*2)
+
+	for k, v := range hash {
+		items = append(items, k)
+		items = append(items, v)
+	}
+
+	return Encode(items, false)
+
+}
+
 func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 	var response []byte
 	buf := bytes.NewBuffer(response)
@@ -249,6 +345,7 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 			buf.Write(evalINCR(cmd.Args))
 
 		case "INFO":
+
 			buf.Write(evalINFO(cmd.Args))
 
 		case "CLIENT":
@@ -262,6 +359,14 @@ func EvalAndRespond(cmds RedisCmds, c io.ReadWriter) {
 
 		case "SLEEP":
 			buf.Write(evalSLEEP(cmd.Args))
+
+		case "HSET":
+			buf.Write(evalHSET(cmd.Args))
+		case "HGET":
+			buf.Write(evalHGET(cmd.Args))
+
+		case "HGETALL":
+			buf.Write(evalHGETALL(cmd.Args))
 		default:
 			buf.Write(evalPing(cmd.Args))
 		}

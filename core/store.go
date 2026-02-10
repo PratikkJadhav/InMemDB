@@ -22,8 +22,9 @@ func SetExpiry(obj *Obj, expDurationMS uint64) {
 func NewObj(value interface{}, expdurationMS int64, otype uint8, oEnc uint8) *Obj {
 
 	obj := &Obj{
+		Type:           otype,
 		Value:          value,
-		TypeEncoding:   otype | oEnc,
+		TypeEncoding:   oEnc,
 		lastAccessedAt: getCurrentClock(),
 	}
 
@@ -32,7 +33,6 @@ func NewObj(value interface{}, expdurationMS int64, otype uint8, oEnc uint8) *Ob
 	}
 
 	return obj
-
 }
 
 func Put(k string, obj *Obj) {
@@ -40,14 +40,18 @@ func Put(k string, obj *Obj) {
 	if len(store) >= config.KeysLimit {
 		evict()
 	}
-	obj.lastAccessedAt = getCurrentClock()
-	store[k] = obj
 
-	if keyKeyspaceStat[0] == nil {
-		keyKeyspaceStat[0] = make(map[string]int)
+	if _, exists := store[k]; !exists {
+		if keyKeyspaceStat[0] == nil {
+			keyKeyspaceStat[0] = make(map[string]int)
+		}
+		keyKeyspaceStat[0]["keys"]++
 	}
 
 	keyKeyspaceStat[0]["keys"]++
+
+	obj.lastAccessedAt = getCurrentClock()
+	store[k] = obj
 }
 
 func Get(k string) *Obj {
@@ -58,9 +62,10 @@ func Get(k string) *Obj {
 			Del(k)
 			return nil
 		}
-	}
 
-	v.lastAccessedAt = getCurrentClock()
+		v.lastAccessedAt = getCurrentClock()
+
+	}
 
 	return v
 }
@@ -68,6 +73,7 @@ func Get(k string) *Obj {
 func Del(k string) bool {
 	if obj, ok := store[k]; ok {
 		delete(expires, obj)
+		delete(store, k)
 		return true
 	}
 
