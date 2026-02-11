@@ -1,4 +1,4 @@
-<img width="2076" height="1288" alt="InMemDB" src="https://github.com/user-attachments/assets/8fe66113-e240-459b-bdbd-643d27c83b3b" />
+
 
 # InMemDB
 
