@@ -1,4 +1,4 @@
-
+<img width="2076" height="1288" alt="InMemDB" src="https://github.com/user-attachments/assets/8fe66113-e240-459b-bdbd-643d27c83b3b" />
 
 # InMemDB
 
@@ -7,46 +7,9 @@
 It features a custom implementation of the **RESP (Redis Serialization Protocol)**, making it compatible with standard Redis clients, and it supports three eviction policies.
 
 
-sequenceDiagram
-    autonumber
-    title InMemDB Command Execution Flow
+<img width="2076" height="1288" alt="InMemDB" src="https://github.com/user-attachments/assets/5c66e031-1461-42fd-aa95-8da4a3384605" />
 
-    participant Client as Redis Client (e.g., redis-cli)
-    participant Server as TCP Server & Parser
-    participant Core as InMemDB Core (Store & Logic)
 
-    note over Client, Server: Connection Established
-    Client->>Server: CONNECT (TCP Handshake)
-    Server-->>Client: Connection Accepted
-
-    note over Server: Spawns Goroutine for Connection
-
-    loop For Each Command
-        Client->>Server: Send Command (Raw RESP Data, e.g., "*3\r\n$3\r\nSET...")
-        
-        rect rgb(40, 44, 52)
-            note right of Server: Parse raw data into Command struct
-            Server->>Server: ParseRESP(data) -> Command
-            
-            Server->>Core: Execute(Command)
-            
-            note right of Core: Process Command
-            Core->>Core: Mutex Lock (if concurrent)
-            Core->>Core: Update/Read Memory Store
-            Core->>Core: Check/Trigger Eviction
-            Core->>Core: Mutex Unlock
-            
-            Core-->>Server: Return Response Object
-            
-            note right of Server: Encode response back to RESP format
-            Server->>Server: EncodeRESP(Response) -> Raw Data
-        end
-        
-        Server-->>Client: Send Response (e.g., "+OK\r\n")
-    end
-
-    Client->>Server: Close Connection
-    Server->>Server: Terminate Connection Goroutine
 ## Key Features
 
 ### 1. Architecture
